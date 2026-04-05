@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Home{% end %}
+{% block content %}
+<div class="hero">
+  <div style="max-width:700px;margin:0 auto">
+    <div style="font-size:56px;margin-bottom:12px">🏛️</div>
+    <h1>Comune di Milano<br>Occupazione Temporanea Suolo Pubblico</h1>
+    <p>Richiedi il permesso di occupazione temporanea (fino a 14 giorni) direttamente online. Paga il canone COSAP e ricevi la concessione in giornata.</p>
+    <div class="hero-buttons">
+      {% if utente %}
+        <a href="/nuova-pratica" class="btn btn-white btn-lg">➕ Nuova Richiesta OSP</a>
+        <a href="/portale" class="btn btn-outline-white btn-lg">Le mie pratiche</a>
+      {% else %}
+        <a href="/register" class="btn btn-white btn-lg">Registrati e inizia</a>
+        <a href="/login" class="btn btn-outline-white btn-lg">Accedi</a>
+      {% end %}
+    </div>
+    <div class="hero-cards">
+      <div class="hero-card">
+        <div class="hc-icon">📝</div>
+        <div class="hc-title">Compila online</div>
+        <div class="hc-desc">Form digitale guidato, nessuna coda allo sportello</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">💳</div>
+        <div class="hc-title">Paga il COSAP</div>
+        <div class="hc-desc">Pagamento sicuro via PagoPA in pochi minuti</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">⚡</div>
+        <div class="hc-title">Concessione rapida</div>
+        <div class="hc-desc">Emessa in giornata dalla Polizia Locale competente</div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-icon">📱</div>
+        <div class="hc-title">Traccia la pratica</div>
+        <div class="hc-desc">Notifiche email ad ogni aggiornamento di stato</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container page-wrapper">
+
+  <!-- Cosa puoi richiedere -->
+  <div style="margin-bottom:36px">
+    <h2 style="font-size:22px;color:#002B61;margin-bottom:6px">Cosa puoi richiedere</h2>
+    <p style="color:#6B7280;margin-bottom:20px">Occupazioni temporanee di suolo pubblico fino a <strong>14 giorni</strong>, gestite dai Comandi Decentrati della Polizia Locale di Milano.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+      {% set tipi_list = [
+        ("🚚","Traslochi","Furgoni e camion per trasloco"),
+        ("📦","Scarico merci","Carico e scarico materiali"),
+        ("🏗️","Container","Container temporanei ≤14gg"),
+        ("🏗️","Autogru","Piattaforme aeree e autogru"),
+        ("🎭","Manifestazioni","Eventi e manifestazioni"),
+        ("🎬","Riprese","Riprese cinematografiche"),
+        ("📢","Volantinaggio","Propaganda e volantinaggio"),
+        ("🎪","Mercatini","Mercatini temporanei"),
+      ] %}
+      {% for icon, nome, desc in tipi_list %}
+      <div style="background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.1);text-align:center">
+        <div style="font-size:24px;margin-bottom:6px">{{ icon }}</div>
+        <div style="font-size:13px;font-weight:700;color:#002B61">{{ nome }}</div>
+        <div style="font-size:11px;color:#6B7280;margin-top:3px">{{ desc }}</div>
+      </div>
+      {% end %}
+    </div>
+  </div>
+
+  <!-- Alert esclusioni -->
+  <div class="alert alert-warning" style="margin-bottom:28px">
+    <span style="font-size:20px">⚠️</span>
+    <div>
+      <strong>Occupazioni escluse da questo portale</strong><br>
+      Ponteggi edili (>14gg), dehors, gazebo permanenti e strutture semipermanenti sono gestiti con procedure separate dall'Ufficio Suolo Pubblico.
+      Per info: <a href="mailto:suolopubblico@comune.milano.it">suolopubblico@comune.milano.it</a>
+    </div>
+  </div>
+
+  <!-- Comandi decentrati -->
+  <h2 style="font-size:22px;color:#002B61;margin-bottom:6px">9 Comandi Decentrati</h2>
+  <p style="color:#6B7280;margin-bottom:16px">La pratica viene automaticamente assegnata al Comando competente in base all'indirizzo dell'occupazione.</p>
+  <div class="zone-grid">
+    {% for z, info in comandi.items() %}
+    <div class="zona-card">
+      <div class="zona-num">{{ z }}</div>
+      <div class="zona-name">{{ info['nome'] }}</div>
+      <div class="zona-q">{{ ', '.join(info['quartieri'][:3]) }}{% if len(info['quartieri']) > 3 %}...{% end %}</div>
+      <div style="font-size:11px;color:#6B7280;margin-top:6px">
+        📧 <a href="mailto:{{ info['email'] }}">{{ info['email'] }}</a>
+      </div>
+    </div>
+    {% end %}
+  </div>
+
+  <!-- Verifica concessione -->
+  <div class="card mt-4">
+    <div class="card-header">
+      <h3>🔍 Verifica una Concessione</h3>
+    </div>
+    <div class="card-body">
+      <p style="font-size:14px;color:#6B7280;margin-bottom:12px">Inserisci il numero di pratica per verificare l'autenticità di una concessione OSP.</p>
+      <form action="" id="verify-form" style="display:flex;gap:10px;max-width:480px">
+        <input type="text" class="form-control" id="num-pratica" placeholder="es. OSP-2024-Z01-123456" style="flex:1">
+        <button type="button" class="btn btn-primary" onclick="verifica()">Verifica</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% end %}
+{% block scripts %}
+<script>
+function verifica() {
+  const v = document.getElementById('num-pratica').value.trim();
+  if (v) window.location.href = '/verifica/' + encodeURIComponent(v);
+}
+document.getElementById('num-pratica').addEventListener('keydown', e => {
+  if (e.key === 'Enter') verifica();
+});
+</script>
+{% end %}
