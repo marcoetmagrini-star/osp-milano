@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Verifica Concessione{% end %}
+{% block content %}
+<div class="container page-wrapper" style="max-width:680px">
+  <div class="page-title" style="margin-bottom:4px">🔍 Verifica Concessione OSP</div>
+  <div class="page-subtitle" style="margin-bottom:24px">Verifica l'autenticità di una concessione di occupazione temporanea</div>
+
+  {% if pratica is None %}
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:40px">
+      <div style="font-size:48px;margin-bottom:12px">❌</div>
+      <h2 style="color:#C0392B;margin-bottom:8px">Concessione non trovata</h2>
+      <p style="color:#6B7280">Il numero di pratica inserito non corrisponde ad alcuna concessione nel sistema.</p>
+      <a href="/" class="btn btn-primary" style="margin-top:16px">← Torna alla home</a>
+    </div>
+  </div>
+  {% elif pratica['stato'] != 'APPROVATA' %}
+  <div class="card">
+    <div class="card-body" style="text-align:center;padding:40px">
+      <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+      <h2 style="color:#D4720A;margin-bottom:8px">Pratica trovata ma non approvata</h2>
+      <p style="color:#6B7280">La pratica <strong>{{ pratica['numero_pratica'] }}</strong> esiste nel sistema ma non ha ancora una concessione emessa.</p>
+      <p style="color:#6B7280;margin-top:6px">Stato attuale: <strong>{{ pratica['stato'] }}</strong></p>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="border:2px solid #1A7F4E">
+    <div class="card-header" style="background:#D4EDDA">
+      <h3 style="color:#145A32;font-size:18px">✅ Concessione AUTENTICA e VALIDA</h3>
+    </div>
+    <div class="card-body">
+      <div style="background:#EEF2FA;border-radius:8px;padding:16px;margin-bottom:20px;text-align:center">
+        <div style="font-size:13px;color:#6B7280;margin-bottom:4px">N. CONCESSIONE</div>
+        <div style="font-size:24px;font-weight:800;color:#003F8A;font-family:monospace">{{ pratica.get('numero_concessione','—') }}</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:4px">Emessa il {{ pratica.get('data_concessione','—')[:10] if pratica.get('data_concessione') else '—' }}</div>
+      </div>
+
+      <div class="detail-grid" style="grid-template-columns:1fr 1fr">
+        <div>
+          <h4 style="font-size:13px;font-weight:700;color:#003F8A;margin-bottom:10px;text-transform:uppercase">Concessionario</h4>
+          <div class="detail-row"><span class="detail-label">Nome/RS</span><span class="detail-value">{{ pratica.get('ragione_sociale') or '' }}</span></div>
+        </div>
+        <div>
+          <h4 style="font-size:13px;font-weight:700;color:#003F8A;margin-bottom:10px;text-transform:uppercase">Occupazione</h4>
+          <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value">{{ tipi.get(pratica['tipo_occupazione'],'—') }}</span></div>
+          <div class="detail-row"><span class="detail-label">Indirizzo</span><span class="detail-value">{{ pratica['via'] }} {{ pratica['civico'] }}</span></div>
+          <div class="detail-row"><span class="detail-label">Superficie</span><span class="detail-value">{{ pratica['superficie_mq'] }} mq</span></div>
+          <div class="detail-row"><span class="detail-label">Dal</span><span class="detail-value"><strong>{{ pratica['data_inizio'] }}</strong></span></div>
+          <div class="detail-row"><span class="detail-label">Al</span><span class="detail-value"><strong>{{ pratica['data_fine'] }}</strong></span></div>
+          <div class="detail-row"><span class="detail-label">Orario</span><span class="detail-value">{{ pratica.get('orario_inizio','—') }} – {{ pratica.get('orario_fine','—') }}</span></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+      <div style="font-size:12px;color:#6B7280;text-align:center">
+        Emessa da: <strong>{{ zona_info['nome'] }}</strong> · {{ zona_info['indirizzo'] }}<br>
+        Verifica effettuata il {{ import_datetime }}
+      </div>
+    </div>
+  </div>
+  {% end %}
+</div>
+{% end %}
