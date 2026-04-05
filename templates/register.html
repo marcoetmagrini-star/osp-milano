@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Registrazione{% end %}
+{% block content %}
+<div class="flex-center" style="min-height:calc(100vh - 120px);padding:40px 20px">
+  <div style="width:100%;max-width:480px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:48px;margin-bottom:8px">📋</div>
+      <h1 style="font-size:22px;color:#002B61;font-weight:800">Registrazione Richiedente</h1>
+      <p style="color:#6B7280;font-size:14px">Crea il tuo account per richiedere permessi OSP</p>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        {% if errore %}
+        <div class="alert alert-danger">⚠️ {{ errore }}</div>
+        {% end %}
+        <form method="post" action="/register">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nome <span class="req">*</span></label>
+              <input type="text" name="nome" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cognome <span class="req">*</span></label>
+              <input type="text" name="cognome" class="form-control" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email <span class="req">*</span></label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username <span class="req">*</span></label>
+            <input type="text" name="username" class="form-control" required autocomplete="username">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Password <span class="req">*</span></label>
+              <input type="password" name="password" class="form-control" required autocomplete="new-password" minlength="8">
+              <span class="form-hint">Min. 8 caratteri</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Conferma password <span class="req">*</span></label>
+              <input type="password" name="password2" class="form-control" required autocomplete="new-password">
+            </div>
+          </div>
+          <div class="form-check" style="margin-bottom:16px">
+            <input type="checkbox" id="privacy" required>
+            <label for="privacy">Acconsento al trattamento dei dati personali ai sensi del GDPR (Reg. UE 2016/679)</label>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Crea account</button>
+        </form>
+        <div class="divider"></div>
+        <div style="text-align:center;font-size:13px">
+          Hai già un account? <a href="/login">Accedi</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% end %}
