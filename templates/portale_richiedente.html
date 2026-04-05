@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Le mie Pratiche{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Le mie Pratiche OSP</div>
+      <div class="page-subtitle">
+        {% if richiedente %}
+          {{ richiedente.get('ragione_sociale') or (richiedente.get('nome','') + ' ' + richiedente.get('cognome','')) }}
+        {% end %}
+      </div>
+    </div>
+    <a href="/nuova-pratica" class="btn btn-primary btn-lg">➕ Nuova Richiesta</a>
+  </div>
+
+  {% if not pratiche %}
+  <div class="card">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p style="font-size:18px;font-weight:600;color:#374151;margin-bottom:8px">Nessuna pratica ancora</p>
+      <p style="margin-bottom:20px">Inizia subito richiedendo il tuo primo permesso di occupazione temporanea.</p>
+      <a href="/nuova-pratica" class="btn btn-primary btn-lg">➕ Nuova Richiesta OSP</a>
+    </div>
+  </div>
+  {% else %}
+
+  <!-- Contatori rapidi -->
+  <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+    {% set totale = len(pratiche) %}
+    {% set in_corso = len([p for p in pratiche if p['stato'] in ['INVIATA','PAGATA','INTEGRAZIONI']]) %}
+    {% set approvate = len([p for p in pratiche if p['stato'] == 'APPROVATA']) %}
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div><div class="kpi-value">{{ totale }}</div><div class="kpi-label">Totale pratiche</div></div>
+    </div>
+    <div class="kpi-card arancio">
+      <div class="kpi-icon">⏳</div>
+      <div><div class="kpi-value">{{ in_corso }}</div><div class="kpi-label">In corso</div></div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">✅</div>
+      <div><div class="kpi-value">{{ approvate }}</div><div class="kpi-label">Approvate</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>📋 Tutte le Pratiche</h3>
+      <span style="font-size:13px;color:#6B7280">{{ len(pratiche) }} pratiche</span>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>N. Pratica</th>
+            <th>Tipo</th>
+            <th>Indirizzo</th>
+            <th>Periodo</th>
+            <th>Importo</th>
+            <th>Stato</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pratiche %}
+          {% set stato_info = stati.get(p['stato'], ('Sconosciuto','gray')) %}
+          <tr>
+            <td>
+              <strong style="font-size:12px;font-family:monospace">{{ p['numero_pratica'] }}</strong><br>
+              <span style="font-size:11px;color:#9CA3AF">{{ p['created_at'][:10] if p.get('created_at') else '' }}</span>
+            </td>
+            <td style="font-size:13px">{{ tipi.get(p['tipo_occupazione'], p['tipo_occupazione']) }}</td>
+            <td style="font-size:13px">{{ p['via'] }} {{ p['civico'] }}, MI</td>
+            <td style="font-size:12px">
+              {{ p['data_inizio'] }}<br>→ {{ p['data_fine'] }}<br>
+              <span style="color:#6B7280">({{ p['giorni_effettivi'] }} gg)</span>
+            </td>
+            <td style="font-size:13px;font-weight:600">
+              €{{ '%.2f' % (p.get('importo_totale') or 0,) }}<br>
+              {% if p['pagamento_stato'] == 'PAGATO' %}
+                <span style="font-size:11px;color:#1A7F4E">✅ Pagato</span>
+              {% else %}
+                <span style="font-size:11px;color:#D4720A">⏳ Da pagare</span>
+              {% end %}
+            </td>
+            <td>
+              <span class="badge badge-{{ stato_info[1] }}">{{ stato_info[0] }}</span>
+            </td>
+            <td>
+              <div class="actions">
+                <a href="/pratica/{{ p['id'] }}/riepilogo" class="btn btn-outline btn-sm">Dettaglio</a>
+                {% if p['stato'] == 'INVIATA' and p['pagamento_stato'] != 'PAGATO' %}
+                  <a href="/pratica/{{ p['id'] }}/paga" class="btn btn-warning btn-sm">💳 Paga</a>
+                {% end %}
+                {% if p['stato'] == 'APPROVATA' %}
+                  <a href="/pratica/{{ p['id'] }}/concessione" class="btn btn-success btn-sm">📄 Concessione</a>
+                {% end %}
+              </div>
+            </td>
+          </tr>
+          {% end %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% end %}
+</div>
+{% end %}
