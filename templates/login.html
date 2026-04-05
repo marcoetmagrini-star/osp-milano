@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Accedi{% end %}
+{% block content %}
+<div class="flex-center" style="min-height:calc(100vh - 120px);padding:40px 20px">
+  <div style="width:100%;max-width:400px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:48px;margin-bottom:8px">🔐</div>
+      <h1 style="font-size:24px;color:#002B61;font-weight:800">Accedi al portale OSP</h1>
+      <p style="color:#6B7280;font-size:14px;margin-top:4px">Comune di Milano — Polizia Locale</p>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        {% if errore %}
+        <div class="alert alert-danger">⚠️ {{ errore }}</div>
+        {% end %}
+        {% set registrato = handler.get_argument('registrato','') %}
+        {% if registrato %}
+        <div class="alert alert-success">✅ Registrazione completata! Ora puoi accedere.</div>
+        {% end %}
+        <form method="post" action="/login{% if handler.get_argument('next','') %}?next={{ handler.get_argument('next','') }}{% end %}">
+          <div class="form-group">
+            <label class="form-label">Username <span class="req">*</span></label>
+            <input type="text" name="username" class="form-control" autocomplete="username" required autofocus>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password <span class="req">*</span></label>
+            <input type="password" name="password" class="form-control" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:8px">
+            Accedi
+          </button>
+        </form>
+        <div class="divider"></div>
+        <div style="text-align:center;font-size:13px">
+          Non hai un account? <a href="/register">Registrati</a>
+        </div>
+        <div style="margin-top:16px;padding:12px;background:#F9FAFB;border-radius:6px;font-size:12px;color:#6B7280">
+          <strong>Account test:</strong><br>
+          Richiedente: <code>azienda1 / pass1234</code><br>
+          Operatore Z1: <code>zona1op / zona1pass</code><br>
+          Admin: <code>admin / admin123</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% end %}
