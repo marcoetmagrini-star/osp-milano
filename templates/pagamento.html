@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Pagamento — {{ pratica['numero_pratica'] }}{% end %}
+{% block content %}
+<div class="container page-wrapper" style="max-width:700px">
+  <div class="breadcrumb"><a href="/pratica/{{ pratica['id'] }}/riepilogo">← Torna alla pratica</a></div>
+  <div class="page-title" style="margin-bottom:4px">💳 Pagamento COSAP</div>
+  <div class="page-subtitle" style="margin-bottom:24px">Pratica {{ pratica['numero_pratica'] }}</div>
+
+  <!-- Riepilogo importo -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>📋 Riepilogo da pagare</h3></div>
+    <div class="card-body">
+      <div class="cosap-box">
+        <div style="font-size:13px;color:#6B7280;margin-bottom:10px">
+          {{ tipi.get(pratica['tipo_occupazione'],'') }} · {{ pratica['via'] }} {{ pratica['civico'] }} ·
+          {{ pratica['data_inizio'] }} → {{ pratica['data_fine'] }} ({{ pratica['giorni_effettivi'] }} gg) · {{ pratica['superficie_mq'] }} mq
+        </div>
+        <div class="cosap-row"><span>Canone COSAP</span><strong>€ {{ '%.2f' % (pratica.get('importo_cosap',) or 0) }}</strong></div>
+        <div class="cosap-row"><span>Bollo digitale</span><strong>€ {{ '%.2f' % (pratica.get('importo_bollo',) or 16) }}</strong></div>
+        <div class="cosap-row total"><span>TOTALE DA PAGARE</span><span>€ {{ '%.2f' % (pratica.get('importo_totale',) or 0) }}</span></div>
+        <div style="font-size:12px;color:#6B7280;margin-top:8px">IUV: <code>{{ pratica.get('iuv','—') }}</code></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metodi di pagamento -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>💳 Scegli metodo di pagamento</h3></div>
+    <div class="card-body">
+      <form method="post" action="/pratica/{{ pratica['id'] }}/paga">
+        <div class="payment-methods">
+          <label class="payment-method">
+            <input type="radio" name="canale" value="PAGOPA_CARTA">
+            <div class="pay-icon">💳</div>
+            <div class="pay-label">Carta di credito</div>
+            <div class="pay-desc">Visa, Mastercard, American Express</div>
+          </label>
+          <label class="payment-method">
+            <input type="radio" name="canale" value="PAGOPA_BONIFICO">
+            <div class="pay-icon">🏦</div>
+            <div class="pay-label">Bonifico bancario</div>
+            <div class="pay-desc">SEPA istantaneo</div>
+          </label>
+          <label class="payment-method">
+            <input type="radio" name="canale" value="CBILL">
+            <div class="pay-icon">📱</div>
+            <div class="pay-label">App bancaria</div>
+            <div class="pay-desc">CBILL / MyBank</div>
+          </label>
+          <label class="payment-method">
+            <input type="radio" name="canale" value="SPORTELLO">
+            <div class="pay-icon">🏛️</div>
+            <div class="pay-label">Sportello</div>
+            <div class="pay-desc">Presso il Comando Decentrato</div>
+          </label>
+        </div>
+
+        <div class="alert alert-info" style="margin-top:16px">
+          <div>
+            <strong>🔒 Pagamento sicuro tramite PagoPA</strong><br>
+            <span style="font-size:13px">Il sistema PagoPA è la piattaforma nazionale certificata per i pagamenti verso la Pubblica Amministrazione. Dopo il pagamento riceverai conferma via email e la concessione sarà emessa entro la giornata lavorativa.</span>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;display:flex;gap:10px">
+          <a href="/pratica/{{ pratica['id'] }}/riepilogo" class="btn btn-secondary">← Annulla</a>
+          <button type="submit" class="btn btn-success btn-lg" style="flex:1" onclick="return confirm('Confermi il pagamento di €{{ '%.2f' % (pratica.get(\'importo_totale\',) or 0) }} tramite PagoPA?')">
+            🔒 Paga ora €{{ '%.2f' % (pratica.get('importo_totale',) or 0) }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info comando -->
+  <div class="card">
+    <div class="card-header"><h3>🏛️ Comando competente — Zona {{ pratica['zona'] }}</h3></div>
+    <div class="card-body" style="font-size:13px">
+      <strong>{{ zona_info['nome'] }}</strong><br>
+      {{ zona_info['indirizzo'] }}<br>
+      📞 {{ zona_info['telefono'] }} | 📧 <a href="mailto:{{ zona_info['email'] }}">{{ zona_info['email'] }}</a><br>
+      🕐 {{ zona_info['orari'] }}
+    </div>
+  </div>
+</div>
+{% end %}
