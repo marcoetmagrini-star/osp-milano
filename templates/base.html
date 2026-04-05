@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}OSP Milano{% end %} — Comune di Milano</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  {% block head %}{% end %}
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-brand" style="text-decoration:none">
+    <div class="logo-icon">🏛️</div>
+    <div>
+      <h1>OSP Milano</h1>
+      <span>Suolo Pubblico Temporaneo</span>
+    </div>
+  </a>
+
+  <div class="navbar-links">
+    {% if utente %}
+      {% if utente.get('tipo') in ('OPERATORE','ADMIN') %}
+        <a href="/operatore/centrale">🏠 Dashboard</a>
+        {% if utente.get('zona') %}
+          <a href="/operatore/zona/{{ utente.get('zona') }}">Zona {{ utente.get('zona') }}</a>
+          <a href="/operatore/zona/{{ utente.get('zona') }}/pratiche">Pratiche</a>
+        {% end %}
+      {% else %}
+        <a href="/portale">🏠 Le mie pratiche</a>
+        <a href="/nuova-pratica">➕ Nuova richiesta</a>
+      {% end %}
+    {% else %}
+      <a href="/">Home</a>
+      <a href="/login">Accedi</a>
+      <a href="/register">Registrati</a>
+    {% end %}
+  </div>
+
+  {% if utente %}
+  <div class="navbar-user">
+    {% if utente.get('zona') %}
+      <span class="badge-zona">ZONA {{ utente.get('zona') }}</span>
+    {% elif utente.get('tipo') == 'ADMIN' %}
+      <span class="badge-zona">CENTRALE</span>
+    {% end %}
+    <span>{{ utente.get('nome','') }} {{ utente.get('cognome','') }}</span>
+    <a href="/logout" style="color:rgba(255,255,255,.7);font-size:12px;margin-left:4px">Esci</a>
+  </div>
+  {% end %}
+</nav>
+
+<main>
+  {% block content %}{% end %}
+</main>
+
+<footer style="background:#1F2937;color:#9CA3AF;text-align:center;padding:20px;font-size:12px;margin-top:60px">
+  <p>Comune di Milano — Polizia Locale | Sistema OSP Temporaneo (max 14 giorni)</p>
+  <p style="margin-top:4px">Per occupazioni > 14 giorni: Ufficio Suolo Pubblico — <a href="mailto:suolopubblico@comune.milano.it" style="color:#60A5FA">suolopubblico@comune.milano.it</a></p>
+</footer>
+
+<script src="/static/js/app.js"></script>
+{% block scripts %}{% end %}
+</body>
+</html>
