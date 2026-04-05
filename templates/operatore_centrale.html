@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Centrale{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🗺️ Dashboard Comando Centrale</div>
+      <div class="page-subtitle">Visione aggregata — tutte le 9 Zone di Milano</div>
+    </div>
+  </div>
+
+  <!-- KPI globali -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div><div class="kpi-value">{{ kpi['totale'] }}</div><div class="kpi-label">Pratiche totali</div></div>
+    </div>
+    <div class="kpi-card arancio">
+      <div class="kpi-icon">⏳</div>
+      <div><div class="kpi-value">{{ kpi['pendenti'] }}</div><div class="kpi-label">In attesa</div></div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">✅</div>
+      <div><div class="kpi-value">{{ kpi['approvate'] }}</div><div class="kpi-label">Approvate</div></div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">💶</div>
+      <div><div class="kpi-value" style="font-size:22px">€{{ '%.0f' % (kpi['incasso'],) }}</div><div class="kpi-label">Incasso COSAP totale</div></div>
+    </div>
+  </div>
+
+  <!-- Griglia Zone -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>📍 Stato per Zona</h3></div>
+    <div class="card-body">
+      <div class="zone-grid">
+        {% for z_data in kpi['per_zona'] %}
+        {% set z = z_data['zona'] %}
+        {% set info = comandi.get(z, {}) %}
+        <a href="/operatore/zona/{{ z }}" style="text-decoration:none">
+          <div class="zona-card" style="cursor:pointer">
+            <div class="zona-num">{{ z }}</div>
+            <div class="zona-name">{{ info.get('nome','Zona ' + str(z)) }}</div>
+            <div class="zona-q">{{ ', '.join(info.get('quartieri',[])[: 2]) }}</div>
+            <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px">
+              <span>Totale: <strong>{{ z_data['totale'] }}</strong></span>
+              {% if z_data['pendenti'] > 0 %}
+              <span style="color:#D4720A;font-weight:700">⏳ {{ z_data['pendenti'] }} da istruire</span>
+              {% else %}
+              <span style="color:#1A7F4E">✅ In ordine</span>
+              {% end %}
+            </div>
+          </div>
+        </a>
+        {% end %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Contatti rapidi comandi -->
+  <div class="card">
+    <div class="card-header"><h3>📞 Contatti Comandi Decentrati</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Zona</th><th>Quartieri</th><th>Indirizzo</th><th>Email</th><th>Telefono</th><th>Cat.</th><th>Azioni</th></tr>
+        </thead>
+        <tbody>
+          {% for z, info in comandi.items() %}
+          <tr>
+            <td><strong style="font-size:18px;color:#003F8A">{{ z }}</strong></td>
+            <td style="font-size:12px">{{ ', '.join(info['quartieri'][:3]) }}{% if len(info['quartieri']) > 3 %}...{% end %}</td>
+            <td style="font-size:12px">{{ info['indirizzo'] }}</td>
+            <td style="font-size:12px"><a href="mailto:{{ info['email'] }}">{{ info['email'] }}</a></td>
+            <td style="font-size:12px">{{ info['telefono'] }}</td>
+            <td><span class="badge badge-blue">{{ info['categoria_prevalente'] }}</span></td>
+            <td><a href="/operatore/zona/{{ z }}" class="btn btn-outline btn-sm">Dashboard</a></td>
+          </tr>
+          {% end %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% end %}
