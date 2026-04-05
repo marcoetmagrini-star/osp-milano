@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Zona {{ zona }}{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🏛️ {{ zona_info['nome'] }}</div>
+      <div class="page-subtitle">{{ ', '.join(zona_info['quartieri'][:4]) }}{% if len(zona_info['quartieri']) > 4 %} e altri{% end %} · {{ zona_info['orari'] }}</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a href="/operatore/zone/{{ zona }}/pratiche?stato=PAGATA" class="btn btn-warning">⏳ Da istruire ({{ kpi['pendenti'] }})</a>
+      <a href="/operatore/zona/{{ zona }}/pratiche" class="btn btn-outline">Tutte le pratiche</a>
+      {% if utente.get('tipo') == 'ADMIN' %}
+      <a href="/operatore/centrale" class="btn btn-secondary">🗺️ Vista Centrale</a>
+      {% end %}
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div><div class="kpi-value">{{ kpi['totale'] }}</div><div class="kpi-label">Totale pratiche</div></div>
+    </div>
+    <div class="kpi-card arancio">
+      <div class="kpi-icon">⏳</div>
+      <div><div class="kpi-value">{{ kpi['pendenti'] }}</div><div class="kpi-label">Da istruire</div></div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">✅</div>
+      <div><div class="kpi-value">{{ kpi['approvate'] }}</div><div class="kpi-label">Approvate</div></div>
+    </div>
+    <div class="kpi-card rosso">
+      <div class="kpi-icon">❌</div>
+      <div><div class="kpi-value">{{ kpi['rifiutate'] }}</div><div class="kpi-label">Rifiutate</div></div>
+    </div>
+    <div class="kpi-card verde">
+      <div class="kpi-icon">💶</div>
+      <div><div class="kpi-value" style="font-size:20px">€{{ '%.0f' % (kpi['incasso'],) }}</div><div class="kpi-label">Incasso COSAP</div></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- Pratiche urgenti (pagate, da istruire) -->
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-header">
+        <h3>🔔 Da Istruire Subito — Pagamento Ricevuto</h3>
+        <a href="/operatore/zona/{{ zona }}/pratiche?stato=PAGATA" style="font-size:13px;color:#003F8A">Vedi tutte →</a>
+      </div>
+      {% if pratiche_urgenti %}
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>N. Pratica</th><th>Richiedente</th><th>Tipo</th><th>Indirizzo</th><th>Inizio</th><th>Mq</th><th>Importo</th><th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in pratiche_urgenti %}
+            <tr style="background:#FFFBEB">
+              <td><strong style="font-size:12px;font-family:monospace">{{ p['numero_pratica'] }}</strong></td>
+              <td style="font-size:13px">
+                {{ p.get('ragione_sociale') or ((p.get('nome') or '') + ' ' + (p.get('cognome') or '')) }}<br>
+                <span style="font-size:11px;color:#6B7280">{{ p.get('richiedente_email','') }}</span>
+              </td>
+              <td style="font-size:12px">{{ tipi.get(p['tipo_occupazione'], p['tipo_occupazione']) }}</td>
+              <td style="font-size:12px">{{ p['via'] }} {{ p['civico'] }}</td>
+              <td style="font-size:12px">{{ p['data_inizio'] }}<br><span style="color:#6B7280">{{ p['giorni_effettivi'] }} gg</span></td>
+              <td style="font-size:13px;font-weight:700">{{ p['superficie_mq'] }}</td>
+              <td style="font-size:13px;font-weight:700;color:#1A7F4E">€{{ '%.2f' % (p.get('importo_totale',) or 0) }}</td>
+              <td>
+                <a href="/operatore/pratiche/{{ p['id'] }}" class="btn btn-primary btn-sm">Istruisci →</a>
+              </td>
+            </tr>
+            {% end %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:28px">
+        <div style="font-size:32px">✅</div>
+        <p>Nessuna pratica in attesa di istruttoria</p>
+      </div>
+      {% end %}
+    </div>
+
+    <!-- Pratiche recenti -->
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-header">
+        <h3>📋 Pratiche Recenti</h3>
+        <a href="/operatore/zona/{{ zona }}/pratiche" style="font-size:13px;color:#003F8A">Vedi tutte →</a>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>N. Pratica</th><th>Richiedente</th><th>Tipo</th><th>Periodo</th><th>Importo</th><th>Stato</th><th>Azioni</th></tr>
+          </thead>
+          <tbody>
+            {% for p in pratiche_recenti[:10] %}
+            {% set si = stati.get(p['stato'], ('—','gray')) %}
+            <tr>
+              <td><strong style="font-size:12px;font-family:monospace">{{ p['numero_pratica'] }}</strong><br><span style="font-size:11px;color:#9CA3AF">{{ p.get('created_at','')[:10] }}</span></td>
+              <td style="font-size:13px">{{ p.get('ragione_sociale') or ((p.get('nome') or '') + ' ' + (p.get('cognome') or '')) }}</td>
+              <td style="font-size:12px">{{ tipi.get(p['tipo_occupazione'],'') }}</td>
+              <td style="font-size:12px">{{ p['data_inizio'] }}<br>→ {{ p['data_fine'] }}</td>
+              <td style="font-size:13px">€{{ '%.2f' % (p.get('importo_totale',) or 0) }}</td>
+              <td><span class="badge badge-{{ si[1] }}">{{ si[0] }}</span></td>
+              <td><a href="/operatore/pratiche/{{ p['id'] }}" class="btn btn-outline btn-sm">Apri</a></td>
+            </tr>
+            {% end %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Info comando -->
+  <div class="card mt-3">
+    <div class="card-header"><h3>📞 Info Comando</h3></div>
+    <div class="card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;font-size:13px">
+      <div><strong>Indirizzo</strong><br>{{ zona_info['indirizzo'] }}</div>
+      <div><strong>Telefono</strong><br>{{ zona_info['telefono'] }}</div>
+      <div><strong>Email</strong><br><a href="mailto:{{ zona_info['email'] }}">{{ zona_info['email'] }}</a></div>
+      <div><strong>PEC</strong><br><a href="mailto:{{ zona_info['pec'] }}">{{ zona_info['pec'] }}</a></div>
+      <div><strong>Orari</strong><br>{{ zona_info['orari'] }}</div>
+      <div><strong>Categoria stradale prevalente</strong><br>Categoria {{ zona_info['categoria_prevalente'] }}</div>
+    </div>
+  </div>
+</div>
+{% end %}
