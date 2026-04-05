@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Pratica {{ pratica['numero_pratica'] }} — Operatore{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="breadcrumb">
+    <a href="/operatore/zona/{{ pratica['zona'] }}">← Dashboard Zona {{ pratica['zona'] }}</a> /
+    <a href="/operatore/zona/{{ pratica['zona'] }}/pratiche">Pratiche</a>
+  </div>
+
+  {% set si = stati.get(pratica['stato'], ('—','gray')) %}
+
+  <div class="page-header">
+    <div>
+      <div style="font-family:monospace;font-size:14px;font-weight:700;color:#003F8A;margin-bottom:2px">{{ pratica['numero_pratica'] }}</div>
+      <div class="page-title">{{ tipi.get(pratica['tipo_occupazione'],'—') }}</div>
+      <div class="page-subtitle">{{ pratica['via'] }} {{ pratica['civico'] }}, {{ pratica['cap'] }} · {{ pratica['data_inizio'] }} → {{ pratica['data_fine'] }} · {{ pratica['superficie_mq'] }} mq</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      <span class="badge badge-{{ si[1] }}" style="font-size:14px;padding:6px 14px">{{ si[0] }}</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <!-- PDF Modulo Ufficiale — sempre disponibile -->
+        <a href="/operatore/pratiche/{{ pratica['id'] }}/modulo-ufficiale"
+           class="btn btn-outline btn-sm" target="_blank" title="Modulo A ufficiale compilato">
+          📋 Modulo Ufficiale
+        </a>
+        <!-- PDF Concessione — solo se approvata -->
+        {% if pratica['stato'] == 'APPROVATA' %}
+        <a href="/operatore/pratiche/{{ pratica['id'] }}/concessione"
+           class="btn btn-success btn-sm" target="_blank">
+          📄 Concessione PDF
+        </a>
+        {% end %}
+        <button onclick="window.print()" class="btn btn-secondary btn-sm">🖨️ Stampa</button>
+      </div>
+    </div>
+  </div>
+
+  {% if errore %}
+  <div class="alert alert-danger">⚠️ {{ errore }}</div>
+  {% end %}
+
+  <!-- AZIONI OPERATORE -->
+  {% if pratica['stato'] in ('PAGATA', 'INTEGRAZIONI') %}
+  <div class="card mb-3" style="border:2px solid #003F8A">
+    <div class="card-header" style="background:#EEF2FA">
+      <h3 style="color:#003F8A">⚡ Azioni Operatore</h3>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+        <!-- APPROVA -->
+        <div style="border:1px solid #D1D5DB;border-radius:8px;padding:16px">
+          <h4 style="color:#1A7F4E;font-size:14px;margin-bottom:8px">✅ Approva e Rilascia Concessione</h4>
+          <p style="font-size:13px;color:#6B7280;margin-bottom:12px">La concessione PDF sarà generata automaticamente e inviata al richiedente via email.</p>
+          <form method="post" action="/operatore/pratiche/{{ pratica['id'] }}">
+            <input type="hidden" name="azione" value="approva">
+            <div class="form-group">
+              <label class="form-label" style="font-size:12px">Note (opzionale)</label>
+              <textarea name="note_operatore" class="form-control" rows="2" placeholder="Note per il richiedente..."></textarea>
+            </div>
+            <button type="submit" class="btn btn-success btn-block"
+              onclick="return confirm('Confermi l\'approvazione e il rilascio della concessione?')">
+              ✅ Approva e Emetti Concessione
+            </button>
+          </form>
+        </div>
+
+        <!-- RIFIUTA -->
+        <div style="border:1px solid #D1D5DB;border-radius:8px;padding:16px">
+          <h4 style="color:#C0392B;font-size:14px;margin-bottom:8px">❌ Rifiuta Domanda</h4>
+          <p style="font-size:13px;color:#6B7280;margin-bottom:12px">Il richiedente sarà notificato via email. Il COSAP sarà rimborsato, il bollo no.</p>
+          <form method="post" action="/operatore/pratiche/{{ pratica['id'] }}">
+            <input type="hidden" name="azione" value="rifiuta">
+            <div class="form-group">
+              <label class="form-label" style="font-size:12px">Motivazione rifiuto <span class="req">*</span></label>
+              <textarea name="motivo_rifiuto" class="form-control" rows="2" placeholder="Obbligatoria..." required></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:12px">Note aggiuntive</label>
+              <textarea name="note_operatore" class="form-control" rows="1"></textarea>
+            </div>
+            <button type="submit" class="btn btn-danger btn-block"
+              onclick="return confirm('Confermi il rifiuto? Il richiedente sarà notificato.')">
+              ❌ Rifiuta Domanda
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- RICHIEDI INTEGRAZIONI -->
+      <div style="border:1px solid #D4720A;border-radius:8px;padding:16px;margin-top:16px">
+        <h4 style="color:#D4720A;font-size:14px;margin-bottom:8px">📎 Richiedi Documenti Aggiuntivi</h4>
+        <form method="post" action="/operatore/pratiche/{{ pratica['id'] }}" style="display:flex;gap:10px;align-items:flex-end">
+          <input type="hidden" name="azione" value="integrazioni">
+          <div class="form-group" style="flex:1;margin:0">
+            <label class="form-label" style="font-size:12px">Documenti da richiedere <span class="req">*</span></label>
+            <textarea name="note_operatore" class="form-control" rows="2"
+              placeholder="es. Planimetria con misure mancante, foto dell'area..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-warning">📎 Richiedi</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% end %}
+
+  <!-- CONCESSIONE EMESSA -->
+  {% if pratica['stato'] == 'APPROVATA' %}
+  <div class="card mb-3" style="border:2px solid #1A7F4E">
+    <div class="card-header" style="background:#D4EDDA">
+      <h3 style="color:#145A32">🎉 Concessione Emessa — N. {{ pratica.get('numero_concessione','—') }}</h3>
+    </div>
+    <div class="card-body">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a href="/operatore/pratiche/{{ pratica['id'] }}/concessione" class="btn btn-success" target="_blank">
+          📄 Visualizza/Scarica Concessione PDF
+        </a>
+        <a href="/operatore/pratiche/{{ pratica['id'] }}/modulo-ufficiale" class="btn btn-outline" target="_blank">
+          📋 Modulo Ufficiale Compilato
+        </a>
+        <button onclick="window.print()" class="btn btn-secondary">🖨️ Stampa</button>
+      </div>
+      <div style="font-size:13px;color:#6B7280;margin-top:10px">
+        Data emissione: {{ pratica.get('data_concessione','—')[:16].replace('T',' ') if pratica.get('data_concessione') else '—' }}
+        {% if pratica.get('note_operatore') %} · Note: {{ pratica['note_operatore'] }}{% end %}
+      </div>
+    </div>
+  </div>
+  {% end %}
+
+  <!-- DATI PRINCIPALI -->
+  <div class="detail-grid">
+
+    <div class="card">
+      <div class="card-header"><h3>👤 Richiedente</h3></div>
+      <div class="card-body">
+        <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value">{{ 'Persona Giuridica' if pratica.get('tipo_soggetto')=='PERSONA_GIURIDICA' else 'Persona Fisica' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Nome / R.S.</span><span class="detail-value"><strong>{{ pratica.get('ragione_sociale') or ((pratica.get('nome') or '') + ' ' + (pratica.get('cognome') or '')) }}</strong></span></div>
+        <div class="detail-row"><span class="detail-label">CF / P.IVA</span><span class="detail-value">{{ pratica.get('codice_fiscale') or pratica.get('partita_iva') or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value"><a href="mailto:{{ pratica.get('richiedente_email','') }}">{{ pratica.get('richiedente_email','—') }}</a></span></div>
+        <div class="detail-row"><span class="detail-label">Telefono</span><span class="detail-value">{{ pratica.get('telefono','—') }}</span></div>
+        <div class="detail-row"><span class="detail-label">PEC</span><span class="detail-value">{{ pratica.get('pec') or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Indirizzo</span><span class="detail-value">{{ pratica.get('richiedente_indirizzo','—') }}, {{ pratica.get('richiedente_cap','') }} {{ pratica.get('citta','') }}</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>🚧 Occupazione</h3></div>
+      <div class="card-body">
+        <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-value"><strong>{{ tipi.get(pratica['tipo_occupazione'],'—') }}</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Modulo</span><span class="detail-value"><span class="badge badge-blue">Modulo {{ pratica['tipo_modulo'] }}</span></span></div>
+        <div class="detail-row"><span class="detail-label">Indirizzo</span><span class="detail-value"><strong>{{ pratica['via'] }} {{ pratica['civico'] }}, {{ pratica['cap'] }}</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Superficie</span><span class="detail-value"><strong>{{ pratica['superficie_mq'] }} mq</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Tipo superficie</span><span class="detail-value">{{ pratica.get('tipo_superficie','—').replace('_',' ').title() }}</span></div>
+        <div class="detail-row"><span class="detail-label">Cat. stradale</span><span class="detail-value">Categoria {{ pratica.get('categoria_strada','—') }}</span></div>
+        <div class="detail-row"><span class="detail-label">Impatto traffico</span><span class="detail-value">{{ pratica.get('impatto_traffico','—').replace('_',' ').title() }}</span></div>
+        <div class="detail-row"><span class="detail-label">N. mezzi</span><span class="detail-value">{{ pratica.get('numero_mezzi','—') }}</span></div>
+        {% if pratica.get('targhe_mezzi') and pratica['targhe_mezzi'] != '[]' %}
+        <div class="detail-row"><span class="detail-label">Targhe</span><span class="detail-value">{{ pratica['targhe_mezzi'] }}</span></div>
+        {% end %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>📅 Periodo</h3></div>
+      <div class="card-body">
+        <div class="detail-row"><span class="detail-label">Data inizio</span><span class="detail-value"><strong>{{ pratica['data_inizio'] }}</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Data fine</span><span class="detail-value"><strong>{{ pratica['data_fine'] }}</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Durata</span><span class="detail-value"><strong>{{ pratica['giorni_effettivi'] }} giorni</strong></span></div>
+        <div class="detail-row"><span class="detail-label">Orario</span><span class="detail-value">{{ pratica.get('orario_inizio') or '—' }} – {{ pratica.get('orario_fine') or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Periodicità</span><span class="detail-value">{{ pratica.get('periodicita','—') }}</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3>💶 COSAP e Pagamento</h3></div>
+      <div class="card-body">
+        <div class="cosap-box">
+          <div class="cosap-row"><span>Canone COSAP</span><strong>€ {{ '%.2f' % (pratica.get('importo_cosap',) or 0) }}</strong></div>
+          <div class="cosap-row"><span>Bollo digitale</span><strong>€ {{ '%.2f' % (pratica.get('importo_bollo',) or 16) }}</strong></div>
+          <div class="cosap-row total"><span>TOTALE</span><span>€ {{ '%.2f' % (pratica.get('importo_totale',) or 0) }}</span></div>
+        </div>
+        <div class="detail-row" style="margin-top:8px"><span class="detail-label">Stato pag.</span>
+          <span class="detail-value">
+            {% if pratica['pagamento_stato'] == 'PAGATO' %}
+              <strong style="color:#1A7F4E">✅ PAGATO</strong>
+              {% if pratica.get('pagamento_data') %}&nbsp;{{ pratica['pagamento_data'][:10] }}{% end %}
+            {% else %}
+              <strong style="color:#D4720A">⏳ In attesa</strong>
+            {% end %}
+          </span>
+        </div>
+        <div class="detail-row"><span class="detail-label">IUV</span><span class="detail-value" style="font-family:monospace;font-size:11px">{{ pratica.get('iuv','—') }}</span></div>
+        {% if pratica.get('pagamento_canale') %}
+        <div class="detail-row"><span class="detail-label">Canale</span><span class="detail-value">{{ pratica['pagamento_canale'] }}</span></div>
+        {% end %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Descrizione -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>📝 Descrizione e Motivazione</h3></div>
+    <div class="card-body">
+      <p style="font-size:14px;line-height:1.7"><strong>Descrizione:</strong> {{ pratica.get('descrizione','—') }}</p>
+      {% if pratica.get('motivazione') %}
+      <p style="font-size:14px;line-height:1.7;margin-top:8px"><strong>Motivazione:</strong> {{ pratica['motivazione'] }}</p>
+      {% end %}
+      {% if pratica.get('tipo_materiale') %}
+      <p style="font-size:13px;color:#6B7280;margin-top:6px"><strong>Materiale/struttura:</strong> {{ pratica['tipo_materiale'] }}</p>
+      {% end %}
+    </div>
+  </div>
+
+  <!-- Allegati -->
+  <div class="card mb-3">
+    <div class="card-header"><h3>📎 Allegati ({{ len(allegati) }})</h3></div>
+    <div class="card-body">
+      {% if not allegati %}
+      <p style="color:#6B7280;font-size:13px">Nessun allegato caricato.</p>
+      {% else %}
+      <div class="file-list" style="margin:0">
+        {% for a in allegati %}
+        <div class="file-item">
+          <span class="file-icon">{% if 'pdf' in a.get('mime_type','') %}📄{% elif 'image' in a.get('mime_type','') %}🖼️{% else %}📎{% end %}</span>
+          <span class="file-name">{{ a['nome_file'] }}</span>
+          <span class="badge badge-gray" style="font-size:10px">{{ a.get('tipo','ALTRO') }}</span>
+          <span class="file-size">{{ '%.0f' % ((a.get('dimensione',) or 0)/1024) }} KB</span>
+          <a href="/uploads/{{ pratica['id'] }}/{{ a['percorso'].split('/')[-1] }}" target="_blank" class="btn btn-outline btn-sm">Apri</a>
+        </div>
+        {% end %}
+      </div>
+      {% end %}
+    </div>
+  </div>
+
+  <!-- Cronologia -->
+  <div class="card">
+    <div class="card-header"><h3>📜 Cronologia Pratica</h3></div>
+    <div class="card-body">
+      <div class="timeline">
+        {% for e in eventi %}
+        <div class="timeline-item">
+          <div class="timeline-dot">
+            {% if e['tipo'] == 'APPROVATA' %}✅
+            {% elif e['tipo'] == 'RIFIUTATA' %}❌
+            {% elif e['tipo'] == 'PAGATA' %}💳
+            {% elif e['tipo'] == 'INVIATA' %}📤
+            {% else %}📋{% end %}
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-title">{{ e['tipo'] }}</div>
+            <div class="timeline-time">{{ e.get('created_at','')[:16].replace('T',' ') }}</div>
+            <div class="timeline-desc">{{ e['descrizione'] }}</div>
+          </div>
+        </div>
+        {% end %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+@media print {
+  .navbar, .action-bar, form[method=post], .btn { display: none !important; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+  body { background: white; }
+}
+</style>
+{% end %}
