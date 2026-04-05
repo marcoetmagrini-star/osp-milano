@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Pratiche Zona {{ zona }}{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="breadcrumb"><a href="/operatore/zona/{{ zona }}">← Dashboard Zona {{ zona }}</a></div>
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pratiche — Zona {{ zona }}</div>
+      <div class="page-subtitle">{{ zona_info['nome'] }}</div>
+    </div>
+  </div>
+
+  <!-- Filtri stato -->
+  <div class="card mb-3">
+    <div class="card-body" style="padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:13px;font-weight:600;color:#6B7280">Filtra:</span>
+      {% for stato_k, (stato_l, stato_c) in stati.items() %}
+      <a href="/operatore/zona/{{ zona }}/pratiche?stato={{ stato_k }}"
+         class="badge badge-{{ stato_c }}" style="cursor:pointer;padding:5px 12px;{% if stato_filtro == stato_k %}outline:2px solid #003F8A;{% end %}">
+        {{ stato_l }}
+      </a>
+      {% end %}
+      <a href="/operatore/zona/{{ zona }}/pratiche" class="badge badge-gray" style="cursor:pointer;padding:5px 12px;">Tutte</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ len(pratiche) }} pratiche {% if stato_filtro %}— {{ stati.get(stato_filtro,('',''))[0] }}{% end %}</h3>
+    </div>
+    {% if not pratiche %}
+    <div class="empty-state"><div class="empty-icon">📋</div><p>Nessuna pratica trovata</p></div>
+    {% else %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>N. Pratica</th><th>Richiedente</th><th>Tipo</th><th>Indirizzo</th><th>Periodo</th><th>mq</th><th>Importo</th><th>Stato</th><th>Azioni</th></tr>
+        </thead>
+        <tbody>
+          {% for p in pratiche %}
+          {% set si = stati.get(p['stato'],('—','gray')) %}
+          <tr {% if p['stato']=='PAGATA' %}style="background:#FFFBEB"{% end %}>
+            <td>
+              <strong style="font-size:12px;font-family:monospace">{{ p['numero_pratica'] }}</strong><br>
+              <span style="font-size:11px;color:#9CA3AF">{{ p.get('created_at','')[:10] }}</span>
+            </td>
+            <td style="font-size:13px">
+              {{ p.get('ragione_sociale') or ((p.get('nome') or '') + ' ' + (p.get('cognome') or '')) }}<br>
+              <span style="font-size:11px;color:#6B7280">{{ p.get('richiedente_email','') }}</span>
+            </td>
+            <td style="font-size:12px">{{ tipi.get(p['tipo_occupazione'],'') }}</td>
+            <td style="font-size:12px">{{ p['via'] }} {{ p['civico'] }}</td>
+            <td style="font-size:12px">{{ p['data_inizio'] }}<br>→ {{ p['data_fine'] }}<br><span style="color:#6B7280">({{ p['giorni_effettivi'] }} gg)</span></td>
+            <td style="font-size:13px;font-weight:600">{{ p['superficie_mq'] }}</td>
+            <td style="font-size:13px;font-weight:600">€{{ '%.2f' % (p.get('importo_totale',) or 0) }}</td>
+            <td><span class="badge badge-{{ si[1] }}">{{ si[0] }}</span></td>
+            <td>
+              <div class="actions">
+                <a href="/operatore/pratiche/{{ p['id'] }}" class="btn btn-primary btn-sm">Apri</a>
+              </div>
+            </td>
+          </tr>
+          {% end %}
+        </tbody>
+      </table>
+    </div>
+    {% end %}
+  </div>
+</div>
+{% end %}
