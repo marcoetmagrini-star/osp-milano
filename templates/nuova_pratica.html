@@ -1,0 +1,1200 @@
+{% extends "base.html" %}
+{% block title %}Nuova Richiesta OSP — Modulo A{% end %}
+{% block extra_css %}
+<style>
+.form-section { display:none; }
+.form-section.active { display:block; }
+.step-circle { width:32px;height:32px;border-radius:50%;background:#E5E7EB;color:#6B7280;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;transition:all .2s; }
+.step.active .step-circle { background:#003F8A;color:#fff; }
+.step.done .step-circle { background:#10B981;color:#fff; }
+.step-label { font-size:11px;color:#6B7280;margin-top:4px;text-align:center; }
+.step.active .step-label { color:#003F8A;font-weight:600; }
+.stepper { display:flex;gap:0;align-items:flex-start; }
+.step { display:flex;flex-direction:column;align-items:center;flex:1; }
+.step:not(:last-child)::after { content:'';flex:1;height:2px;background:#E5E7EB;margin-top:15px;position:relative; }
+.req { color:#DC2626; }
+.section-title { font-size:14px;font-weight:700;color:#003F8A;padding:8px 0 12px;margin-bottom:0;border-bottom:2px solid #E5E7EB;margin-bottom:16px; }
+.checkbox-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px; }
+.checkbox-item { display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #E5E7EB;border-radius:6px;cursor:pointer;transition:all .15s; }
+.checkbox-item:hover { border-color:#003F8A;background:#EFF6FF; }
+.checkbox-item input[type=checkbox]:checked + span { color:#003F8A;font-weight:600; }
+.sub-section { background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:16px;margin-top:12px; }
+.cosap-preview { background:linear-gradient(135deg,#EFF6FF,#DBEAFE);border:1px solid #BFDBFE;border-radius:10px;padding:16px; }
+.nav-buttons { display:flex;justify-content:space-between;margin-top:24px; }
+.veicolo-fields { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px; }
+.char-counter { font-size:11px;color:#6B7280;text-align:right;margin-top:2px; }
+</style>
+{% end %}
+{% block content %}
+<div class="container page-wrapper">
+  <div class="breadcrumb"><a href="/portale">← Le mie pratiche</a></div>
+  <div class="page-header">
+    <div>
+      <div class="page-title">Nuova Richiesta OSP — Modulo A</div>
+      <div class="page-subtitle">Occupazione Temporanea Suolo Pubblico — massimo 14 giorni</div>
+    </div>
+  </div>
+
+  {% if errori %}
+  <div class="alert alert-danger">
+    <strong>⚠️ Correggi i seguenti errori:</strong>
+    <ul style="margin:8px 0 0 16px">{% for e in errori %}<li>{{ e }}</li>{% end %}</ul>
+  </div>
+  {% end %}
+
+  <!-- Stepper -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-body" style="padding:14px 20px">
+      <div style="background:#E5E7EB;border-radius:4px;height:4px;margin-bottom:14px">
+        <div id="progress-bar" style="background:#003F8A;height:4px;border-radius:4px;width:14%;transition:width .3s"></div>
+      </div>
+      <div class="stepper">
+        <div class="step active" data-step="0"><div class="step-circle">1</div><div class="step-label">Richiedente</div></div>
+        <div class="step" data-step="1"><div class="step-circle">2</div><div class="step-label">Tipo Occup.</div></div>
+        <div class="step" data-step="2"><div class="step-circle">3</div><div class="step-label">Localizzaz.</div></div>
+        <div class="step" data-step="3"><div class="step-circle">4</div><div class="step-label">Periodo</div></div>
+        <div class="step" data-step="4"><div class="step-circle">5</div><div class="step-label">Dettagli</div></div>
+        <div class="step" data-step="5"><div class="step-circle">6</div><div class="step-label">Allegati</div></div>
+        <div class="step" data-step="6"><div class="step-circle">7</div><div class="step-label">Riepilogo</div></div>
+      </div>
+    </div>
+  </div>
+
+  <form method="post" action="/nuova-pratica" enctype="multipart/form-data" id="osp-form">
+  <div style="display:flex;gap:20px;align-items:flex-start">
+  <div style="flex:1;min-width:0">
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 1 — RICHIEDENTE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section active card" id="step-0">
+    <div class="card-header"><h3>👤 Dati Richiedente</h3></div>
+    <div class="card-body">
+
+      {% if richiedente and richiedente.get('nome') %}
+      <div class="alert alert-info" style="margin-bottom:16px">
+        ✅ Dati già presenti nel tuo profilo — controlla e procedi.
+        <br><strong>{{ richiedente.get('ragione_sociale') or (richiedente.get('nome','') + ' ' + richiedente.get('cognome','')) }}</strong>
+        — {{ richiedente.get('email','') }}
+      </div>
+      {% end %}
+
+      <div class="section-title">Natura del richiedente</div>
+      <div class="form-group">
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1px solid #E5E7EB;border-radius:8px">
+            <input type="radio" name="tipo_soggetto" value="PERSONA_FISICA" id="ts-pf"
+              {% if (richiedente and richiedente.get('tipo_soggetto')=='PERSONA_FISICA') or dati_form.get('tipo_soggetto','PERSONA_FISICA')=='PERSONA_FISICA' %}checked{% end %}
+              onchange="toggleTipoSoggetto(this.value)">
+            <span>🧑 Persona Fisica</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1px solid #E5E7EB;border-radius:8px">
+            <input type="radio" name="tipo_soggetto" value="PERSONA_GIURIDICA" id="ts-pg"
+              {% if (richiedente and richiedente.get('tipo_soggetto')=='PERSONA_GIURIDICA') or dati_form.get('tipo_soggetto')=='PERSONA_GIURIDICA' %}checked{% end %}
+              onchange="toggleTipoSoggetto(this.value)">
+            <span>🏢 Persona Giuridica / Ditta</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Persona Fisica -->
+      <div id="section-pf">
+        <div class="section-title">Generalità</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Cognome <span class="req">*</span></label>
+            <input type="text" name="cognome" class="form-control" autocomplete="family-name"
+              value="{{ richiedente.get('cognome','') if richiedente else dati_form.get('cognome','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome <span class="req">*</span></label>
+            <input type="text" name="nome" class="form-control" autocomplete="given-name"
+              value="{{ richiedente.get('nome','') if richiedente else dati_form.get('nome','') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Data di nascita <span class="req">*</span></label>
+            <input type="date" name="data_nascita" class="form-control"
+              value="{{ richiedente.get('data_nascita','') if richiedente else dati_form.get('data_nascita','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Luogo di nascita <span class="req">*</span></label>
+            <input type="text" name="luogo_nascita" class="form-control" placeholder="es. Milano (MI)"
+              value="{{ richiedente.get('luogo_nascita','') if richiedente else dati_form.get('luogo_nascita','') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Codice Fiscale <span class="req">*</span></label>
+            <input type="text" name="codice_fiscale" class="form-control" maxlength="16"
+              style="text-transform:uppercase;font-family:monospace"
+              value="{{ richiedente.get('codice_fiscale','') if richiedente else dati_form.get('codice_fiscale','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Documento d'identità <span class="req">*</span></label>
+            <div style="display:flex;gap:8px">
+              <select name="tipo_documento" class="form-control" style="flex:1.2">
+                {% set td = richiedente.get('tipo_documento','CI') if richiedente else dati_form.get('tipo_documento','CI') %}
+                <option value="CI" {% if td=='CI' %}selected{% end %}>Carta d'identità</option>
+                <option value="PASSAPORTO" {% if td=='PASSAPORTO' %}selected{% end %}>Passaporto</option>
+                <option value="PATENTE" {% if td=='PATENTE' %}selected{% end %}>Patente</option>
+                <option value="ALTRO" {% if td=='ALTRO' %}selected{% end %}>Altro</option>
+              </select>
+              <input type="text" name="numero_documento" class="form-control" placeholder="Numero"
+                style="flex:1.5;font-family:monospace;text-transform:uppercase"
+                value="{{ richiedente.get('numero_documento','') if richiedente else dati_form.get('numero_documento','') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Persona Giuridica -->
+      <div id="section-pg" style="display:none">
+        <div class="section-title">Dati Azienda / Ente</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:2">
+            <label class="form-label">Ragione Sociale <span class="req">*</span></label>
+            <input type="text" name="ragione_sociale" class="form-control"
+              value="{{ richiedente.get('ragione_sociale','') if richiedente else dati_form.get('ragione_sociale','') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Partita IVA <span class="req">*</span></label>
+            <input type="text" name="partita_iva" class="form-control" maxlength="11"
+              style="font-family:monospace"
+              value="{{ richiedente.get('partita_iva','') if richiedente else dati_form.get('partita_iva','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Codice SDI / Destinatario</label>
+            <input type="text" name="codice_sdi" class="form-control" maxlength="7"
+              style="font-family:monospace;text-transform:uppercase"
+              placeholder="7 caratteri"
+              value="{{ richiedente.get('codice_sdi','') if richiedente else dati_form.get('codice_sdi','') }}">
+          </div>
+        </div>
+        <div class="section-title" style="margin-top:8px">Sede Legale</div>
+        <div class="form-row">
+          <div class="form-group" style="flex:3">
+            <label class="form-label">Via / Piazza <span class="req">*</span></label>
+            <input type="text" name="sede_via" class="form-control"
+              value="{{ richiedente.get('sede_via','') if richiedente else dati_form.get('sede_via','') }}">
+          </div>
+          <div class="form-group" style="flex:0.7">
+            <label class="form-label">N. civico</label>
+            <input type="text" name="sede_civico" class="form-control"
+              value="{{ richiedente.get('sede_civico','') if richiedente else dati_form.get('sede_civico','') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:0.8">
+            <label class="form-label">CAP</label>
+            <input type="text" name="sede_cap" class="form-control" maxlength="5" style="font-family:monospace"
+              value="{{ richiedente.get('sede_cap','') if richiedente else dati_form.get('sede_cap','') }}">
+          </div>
+          <div class="form-group" style="flex:2">
+            <label class="form-label">Città</label>
+            <input type="text" name="sede_citta" class="form-control"
+              value="{{ richiedente.get('sede_citta','Milano') if richiedente else dati_form.get('sede_citta','Milano') }}">
+          </div>
+          <div class="form-group" style="flex:0.7">
+            <label class="form-label">Prov.</label>
+            <input type="text" name="sede_provincia" class="form-control" maxlength="2"
+              style="text-transform:uppercase;font-family:monospace"
+              value="{{ richiedente.get('sede_provincia','MI') if richiedente else dati_form.get('sede_provincia','MI') }}">
+          </div>
+        </div>
+        <div class="section-title" style="margin-top:8px">Legale Rappresentante</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Cognome <span class="req">*</span></label>
+            <input type="text" name="cognome" class="form-control"
+              value="{{ richiedente.get('cognome','') if richiedente else dati_form.get('cognome','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome <span class="req">*</span></label>
+            <input type="text" name="nome" class="form-control"
+              value="{{ richiedente.get('nome','') if richiedente else dati_form.get('nome','') }}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Codice Fiscale (legale rapp.) <span class="req">*</span></label>
+            <input type="text" name="codice_fiscale" class="form-control" maxlength="16"
+              style="text-transform:uppercase;font-family:monospace"
+              value="{{ richiedente.get('codice_fiscale','') if richiedente else dati_form.get('codice_fiscale','') }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Documento d'identità</label>
+            <div style="display:flex;gap:8px">
+              <select name="tipo_documento" class="form-control" style="flex:1.2">
+                <option value="CI">Carta d'identità</option>
+                <option value="PASSAPORTO">Passaporto</option>
+              </select>
+              <input type="text" name="numero_documento" class="form-control"
+                placeholder="Numero" style="flex:1.5;font-family:monospace;text-transform:uppercase"
+                value="{{ richiedente.get('numero_documento','') if richiedente else '' }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Residenza / Domicilio -->
+      <div class="section-title" style="margin-top:8px">Residenza / Domicilio</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:3">
+          <label class="form-label">Via / Piazza <span class="req">*</span></label>
+          <input type="text" name="residenza_via" class="form-control" autocomplete="street-address"
+            value="{{ richiedente.get('residenza_via','') if richiedente else dati_form.get('residenza_via','') }}">
+        </div>
+        <div class="form-group" style="flex:0.7">
+          <label class="form-label">N. civico</label>
+          <input type="text" name="residenza_civico" class="form-control"
+            value="{{ richiedente.get('residenza_civico','') if richiedente else dati_form.get('residenza_civico','') }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0.8">
+          <label class="form-label">CAP <span class="req">*</span></label>
+          <input type="text" name="residenza_cap" class="form-control" maxlength="5"
+            style="font-family:monospace" autocomplete="postal-code"
+            value="{{ richiedente.get('residenza_cap','') if richiedente else dati_form.get('residenza_cap','') }}">
+        </div>
+        <div class="form-group" style="flex:2">
+          <label class="form-label">Città <span class="req">*</span></label>
+          <input type="text" name="residenza_citta" class="form-control" autocomplete="address-level2"
+            value="{{ richiedente.get('residenza_citta','Milano') if richiedente else dati_form.get('residenza_citta','Milano') }}">
+        </div>
+        <div class="form-group" style="flex:0.7">
+          <label class="form-label">Prov.</label>
+          <input type="text" name="residenza_provincia" class="form-control" maxlength="2"
+            style="text-transform:uppercase;font-family:monospace" autocomplete="address-level1"
+            value="{{ richiedente.get('residenza_provincia','MI') if richiedente else dati_form.get('residenza_provincia','MI') }}">
+        </div>
+      </div>
+
+      <!-- Contatti -->
+      <div class="section-title" style="margin-top:8px">Recapiti</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email <span class="req">*</span></label>
+          <input type="email" name="email" class="form-control" autocomplete="email"
+            value="{{ richiedente.get('email','') if richiedente else dati_form.get('email','') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">PEC</label>
+          <input type="email" name="pec" class="form-control"
+            value="{{ richiedente.get('pec','') if richiedente else dati_form.get('pec','') }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Telefono <span class="req">*</span></label>
+          <input type="tel" name="telefono" class="form-control" autocomplete="tel"
+            value="{{ richiedente.get('telefono','') if richiedente else dati_form.get('telefono','') }}">
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <div></div>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 2 — TIPO OCCUPAZIONE & SUPERFICIE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-1">
+    <div class="card-header"><h3>🏗️ Tipo di Occupazione</h3></div>
+    <div class="card-body">
+
+      <div class="section-title">Tipo di occupazione richiesta <span class="req">*</span></div>
+      <div class="form-group">
+        <select name="tipo_occupazione" id="tipo_occupazione" class="form-control" required
+          onchange="updateCosapPreview()">
+          <option value="">— Seleziona —</option>
+          {% for cod, label in tipi_occupazione.items() %}
+          <option value="{{ cod }}"
+            {% if dati_form.get('tipo_occupazione')==cod %}selected{% end %}>
+            {{ label }}
+          </option>
+          {% end %}
+        </select>
+      </div>
+
+      <div class="section-title" style="margin-top:16px">Tipo di superficie occupata <span class="req">*</span></div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:10px">
+        Barrare la casella o le caselle che indicano la tipologia di suolo pubblico interessato
+      </div>
+      <div class="checkbox-grid">
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo_sup_marciapiede" value="1"
+            {% if dati_form.get('tipo_sup_marciapiede') %}checked{% end %}>
+          <span>☐ Marciapiede</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo_sup_carreggiata" value="1"
+            {% if dati_form.get('tipo_sup_carreggiata') %}checked{% end %}>
+          <span>☐ Carreggiata (sede stradale)</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo_sup_stalli" value="1"
+            {% if dati_form.get('tipo_sup_stalli') %}checked{% end %}>
+          <span>☐ Stalli di sosta</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="tipo_sup_verde" value="1"
+            {% if dati_form.get('tipo_sup_verde') %}checked{% end %}>
+          <span>☐ Area verde / Sterrato</span>
+        </label>
+      </div>
+      <input type="hidden" name="tipo_superficie" id="tipo_superficie_hidden" value="{{ dati_form.get('tipo_superficie','MARCIAPIEDE') }}">
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 3 — LOCALIZZAZIONE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-2">
+    <div class="card-header"><h3>📍 Localizzazione dell'Occupazione</h3></div>
+    <div class="card-body">
+
+      <div class="section-title">Indirizzo del sito di occupazione</div>
+      <div class="form-row">
+        <div class="form-group" style="flex:3">
+          <label class="form-label">Via / Piazza <span class="req">*</span></label>
+          <input type="text" name="via" id="via" class="form-control" required
+            placeholder="es. Via Dante"
+            value="{{ dati_form.get('via','') }}"
+            oninput="updateCosapPreview()">
+        </div>
+        <div class="form-group" style="flex:0.8">
+          <label class="form-label">N. civico</label>
+          <input type="text" name="civico" class="form-control"
+            value="{{ dati_form.get('civico','') }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0.8">
+          <label class="form-label">CAP <span class="req">*</span></label>
+          <input type="text" name="cap" id="cap" class="form-control" maxlength="5"
+            style="font-family:monospace" required
+            value="{{ dati_form.get('cap','') }}"
+            oninput="rilevaCAPZona(this.value)">
+        </div>
+        <div class="form-group" style="flex:1.5">
+          <label class="form-label">NIL / Quartiere</label>
+          <input type="text" name="nil" class="form-control" placeholder="es. Brera, Isola, ..."
+            value="{{ dati_form.get('nil','') }}">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Zona Comando rilevata</label>
+          <input type="text" id="zona_display" class="form-control" readonly
+            style="background:#F3F4F6;font-weight:600;color:#003F8A"
+            value="—">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Riferimenti (palo luce, numeri civici tratto, ...) <span class="req">*</span></label>
+        <input type="text" name="riferimenti" class="form-control" required
+          placeholder="es. fronte al n.civico 12, tra i pali luce n.15 e n.17"
+          value="{{ dati_form.get('riferimenti','') }}">
+        <div style="font-size:11px;color:#6B7280;margin-top:3px">
+          Indicare elementi di riferimento utili per l'identificazione del sito (es. pali luce, civici, accessi)
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Microzona OMI <span class="req">*</span></div>
+      <div style="font-size:12px;color:#6B7280;margin-bottom:8px">
+        Selezionare la microzona OMI corrispondente all'indirizzo — incide sul calcolo del canone COSAP
+      </div>
+      <div class="form-group">
+        <select name="microzona_id" id="microzona_id" class="form-control" required
+          onchange="updateCosapPreview()">
+          <option value="">— Seleziona microzona —</option>
+          {% for mz in microzone %}
+          <option value="{{ mz['id'] }}"
+            data-coeff="{{ '%.5f' % mz['coefficiente'] }}"
+            data-zona="{{ mz['zona'] }}"
+            {% if str(dati_form.get('microzona_id','')) == str(mz['id']) %}selected{% end %}>
+            [{{ mz['codice'] }}] {{ mz['nome'] }} — Zona {{ mz['zona'] }} — coeff. {{ '%.3f' % mz['coefficiente'] }}
+          </option>
+          {% end %}
+        </select>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Relazione con stalli di sosta</div>
+      <div class="checkbox-grid" style="grid-template-columns:1fr 1fr">
+        <label class="checkbox-item">
+          <input type="checkbox" name="rientrante_stalli" value="1"
+            {% if dati_form.get('rientrante_stalli') %}checked{% end %}>
+          <span>L'occupazione è rientrante in stalli di sosta</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="eccedente_stalli" value="1" id="cb-eccedente"
+            {% if dati_form.get('eccedente_stalli') %}checked{% end %}
+            onchange="toggleEccedente()">
+          <span>L'occupazione eccede dagli stalli di sosta</span>
+        </label>
+      </div>
+      <div id="eccedente-dove" style="display:{% if dati_form.get('eccedente_stalli') %}block{% else %}none{% end %};margin-top:8px">
+        <label class="form-label">Dove eccede <span class="req">*</span></label>
+        <input type="text" name="eccedente_dove" class="form-control"
+          placeholder="es. sul marciapiede, sulla carreggiata..."
+          value="{{ dati_form.get('eccedente_dove','') }}">
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 4 — PERIODO E SUPERFICIE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-3">
+    <div class="card-header"><h3>📅 Periodo e Superficie</h3></div>
+    <div class="card-body">
+
+      <div class="section-title">Periodo di occupazione</div>
+      <div style="font-size:12px;color:#DC2626;margin-bottom:10px;font-weight:500">
+        ⚠️ Il periodo massimo consentito per OMP temporanea è di 14 giorni consecutivi.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Data inizio <span class="req">*</span></label>
+          <input type="date" name="data_inizio" id="data_inizio" class="form-control" required
+            value="{{ dati_form.get('data_inizio','') }}"
+            min="{{ oggi }}"
+            onchange="updateDurata()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data fine <span class="req">*</span></label>
+          <input type="date" name="data_fine" id="data_fine" class="form-control" required
+            value="{{ dati_form.get('data_fine','') }}"
+            min="{{ oggi }}"
+            onchange="updateDurata()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Durata calcolata</label>
+          <input type="text" id="durata_display" class="form-control" readonly
+            style="background:#F3F4F6;font-weight:600;color:#003F8A"
+            value="—">
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Orario giornaliero</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Ora inizio <span class="req">*</span></label>
+          <input type="time" name="ora_inizio" class="form-control" required
+            value="{{ dati_form.get('ora_inizio','07:00') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ora fine <span class="req">*</span></label>
+          <input type="time" name="ora_fine" class="form-control" required
+            value="{{ dati_form.get('ora_fine','19:00') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:transparent">—</label>
+          <div style="font-size:12px;color:#6B7280;padding-top:10px">
+            Specificare se l'occupazione è solo in determinate fasce orarie
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:8px">Superficie occupata</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Superficie totale (mq) <span class="req">*</span></label>
+          <input type="number" name="superficie_mq" id="superficie_mq" class="form-control"
+            min="0.5" max="5000" step="0.5" required
+            value="{{ dati_form.get('superficie_mq','') }}"
+            onchange="syncDimensioni()" oninput="updateCosapPreview()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Larghezza (mt) <span class="req">*</span></label>
+          <input type="number" name="metri_x" id="metri_x" class="form-control"
+            min="0.1" step="0.1"
+            value="{{ dati_form.get('metri_x','') }}"
+            onchange="calcSuperficieDaMetri()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lunghezza / Profondità (mt) <span class="req">*</span></label>
+          <input type="number" name="metri_y" id="metri_y" class="form-control"
+            min="0.1" step="0.1"
+            value="{{ dati_form.get('metri_y','') }}"
+            onchange="calcSuperficieDaMetri()">
+        </div>
+      </div>
+      <div style="font-size:12px;color:#6B7280;margin-top:-8px;margin-bottom:16px">
+        La superficie in mq viene calcolata automaticamente da larghezza × lunghezza (o inserita manualmente)
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 5 — DETTAGLI TECNICI
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-4">
+    <div class="card-header"><h3>🔧 Dettagli Tecnici</h3></div>
+    <div class="card-body">
+
+      <div class="section-title">Oggetto dell'occupazione (max 40 caratteri)</div>
+      <div class="form-group">
+        <input type="text" name="scopo" id="scopo" class="form-control" maxlength="40" required
+          placeholder="es. Trasloco mobili — Autogru fasciata edificio"
+          value="{{ dati_form.get('scopo','') }}"
+          oninput="updateCharCount()">
+        <div class="char-counter"><span id="char-count">0</span>/40 caratteri</div>
+      </div>
+
+      <!-- ─── Mezzi Speciali ─── -->
+      <div class="section-title" style="margin-top:8px">
+        Utilizzo di mezzi speciali
+        <small style="font-weight:400;color:#6B7280"> — art. 46 D.Lgs 285/92</small>
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" name="ha_mezzi_speciali" value="1" id="cb-mezzi"
+            {% if dati_form.get('ha_mezzi_speciali') %}checked{% end %}
+            onchange="toggleMezziSpeciali()">
+          <span style="font-weight:500">L'occupazione prevede l'utilizzo di mezzi speciali</span>
+        </label>
+      </div>
+
+      <div id="mezzi-speciali-section" style="display:{% if dati_form.get('ha_mezzi_speciali') %}block{% else %}none{% end %}">
+        <div class="sub-section">
+          <div style="font-weight:600;margin-bottom:10px;color:#374151">Tipo di mezzo speciale (una o più voci):</div>
+          <div class="checkbox-grid">
+            <label class="checkbox-item">
+              <input type="checkbox" name="mezzo_autogru" value="1"
+                {% if dati_form.get('mezzo_autogru') %}checked{% end %}>
+              <span>🏗️ Autogru / Gru</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="mezzo_autoscala" value="1"
+                {% if dati_form.get('mezzo_autoscala') %}checked{% end %}>
+              <span>🚒 Autoscala</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="mezzo_autoelevatore" value="1"
+                {% if dati_form.get('mezzo_autoelevatore') %}checked{% end %}>
+              <span>🏋️ Autoelevatore</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="mezzo_piattaforma" value="1"
+                {% if dati_form.get('mezzo_piattaforma') %}checked{% end %}>
+              <span>🪜 Piattaforma aerea</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="mezzo_altro" value="1" id="cb-mezzo-altro"
+                {% if dati_form.get('mezzo_altro') %}checked{% end %}
+                onchange="toggleMezzoAltro()">
+              <span>🔧 Altro mezzo speciale</span>
+            </label>
+          </div>
+          <div id="mezzo-altro-desc" style="display:{% if dati_form.get('mezzo_altro') %}block{% else %}none{% end %};margin-top:8px">
+            <input type="text" name="mezzo_altro_desc" class="form-control"
+              placeholder="Descrivere il tipo di mezzo..."
+              value="{{ dati_form.get('mezzo_altro_desc','') }}">
+          </div>
+
+          <div style="font-weight:600;margin-top:16px;margin-bottom:10px;color:#374151">
+            Dati del veicolo / mezzo:
+          </div>
+          <div class="veicolo-fields">
+            <div class="form-group">
+              <label class="form-label">Targa <span class="req">*</span></label>
+              <input type="text" name="mezzo_targa" class="form-control"
+                style="text-transform:uppercase;font-family:monospace"
+                value="{{ dati_form.get('mezzo_targa','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Proprietario / Ditta</label>
+              <input type="text" name="mezzo_proprietario" class="form-control"
+                value="{{ dati_form.get('mezzo_proprietario','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Marca</label>
+              <input type="text" name="mezzo_marca" class="form-control"
+                value="{{ dati_form.get('mezzo_marca','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Modello</label>
+              <input type="text" name="mezzo_modello" class="form-control"
+                value="{{ dati_form.get('mezzo_modello','') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Accesso Limitato / ZTL ─── -->
+      <div class="section-title" style="margin-top:16px">Accesso in zona a traffico limitato</div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" name="ha_accesso_limitato" value="1" id="cb-accesso"
+            {% if dati_form.get('ha_accesso_limitato') %}checked{% end %}
+            onchange="toggleAccesso()">
+          <span style="font-weight:500">L'occupazione richiede accesso in zona a traffico limitato</span>
+        </label>
+      </div>
+
+      <div id="accesso-section" style="display:{% if dati_form.get('ha_accesso_limitato') %}block{% else %}none{% end %}">
+        <div class="sub-section">
+          <div style="font-weight:600;margin-bottom:10px;color:#374151">Tipo di restrizione (una o più):</div>
+          <div class="checkbox-grid">
+            <label class="checkbox-item">
+              <input type="checkbox" name="accesso_corsia_mezzi" value="1"
+                {% if dati_form.get('accesso_corsia_mezzi') %}checked{% end %}>
+              <span>🚌 Corsia riservata mezzi pubblici</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="accesso_ztl" value="1"
+                {% if dati_form.get('accesso_ztl') %}checked{% end %}>
+              <span>🚫 Zona Traffico Limitato (ZTL)</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="accesso_area_pedonale" value="1"
+                {% if dati_form.get('accesso_area_pedonale') %}checked{% end %}>
+              <span>🚶 Area pedonale</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" name="accesso_altro" value="1" id="cb-accesso-altro"
+                {% if dati_form.get('accesso_altro') %}checked{% end %}
+                onchange="toggleAccessoAltro()">
+              <span>📋 Altro tipo di limitazione</span>
+            </label>
+          </div>
+          <div id="accesso-altro-desc" style="display:{% if dati_form.get('accesso_altro') %}block{% else %}none{% end %};margin-top:8px">
+            <input type="text" name="accesso_altro_desc" class="form-control"
+              placeholder="Descrivere la limitazione..."
+              value="{{ dati_form.get('accesso_altro_desc','') }}">
+          </div>
+
+          <div style="font-weight:600;margin-top:16px;margin-bottom:4px;color:#374151">Localita' / tratto in cui accede:</div>
+          <input type="text" name="accesso_localita" class="form-control" style="margin-bottom:12px"
+            placeholder="es. Via Dante da Largo Cairoli a P.za Cordusio"
+            value="{{ dati_form.get('accesso_localita','') }}">
+
+          <div style="font-weight:600;margin-bottom:10px;color:#374151">Veicolo che accede nella zona:</div>
+          <div class="veicolo-fields">
+            <div class="form-group">
+              <label class="form-label">Targa <span class="req">*</span></label>
+              <input type="text" name="accesso_veicolo_targa" class="form-control"
+                style="text-transform:uppercase;font-family:monospace"
+                value="{{ dati_form.get('accesso_veicolo_targa','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Proprietario</label>
+              <input type="text" name="accesso_veicolo_proprietario" class="form-control"
+                value="{{ dati_form.get('accesso_veicolo_proprietario','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Marca</label>
+              <input type="text" name="accesso_veicolo_marca" class="form-control"
+                value="{{ dati_form.get('accesso_veicolo_marca','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Modello</label>
+              <input type="text" name="accesso_veicolo_modello" class="form-control"
+                value="{{ dati_form.get('accesso_veicolo_modello','') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Fase Successiva (OSP2) ─── -->
+      <div class="section-title" style="margin-top:16px">Occupazione successiva (Fase 2)</div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" name="ha_fase_successiva" value="1" id="cb-fase2"
+            {% if dati_form.get('ha_fase_successiva') %}checked{% end %}
+            onchange="toggleFase2()">
+          <span style="font-weight:500">La cantierizzazione prevede una fase successiva di occupazione</span>
+        </label>
+        <div style="font-size:11px;color:#6B7280;margin-top:4px;margin-left:26px">
+          Compilare se l'occupazione si modifica in una seconda fase (es. post-scavo → ponteggio)
+        </div>
+      </div>
+
+      <div id="fase2-section" style="display:{% if dati_form.get('ha_fase_successiva') %}block{% else %}none{% end %}">
+        <div class="sub-section">
+          <div style="font-weight:600;margin-bottom:14px;color:#374151">Dati occupazione fase 2:</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:3">
+              <label class="form-label">Via / Piazza</label>
+              <input type="text" name="osp2_via" class="form-control"
+                placeholder="(lasciare vuoto se uguale a fase 1)"
+                value="{{ dati_form.get('osp2_via','') }}">
+            </div>
+            <div class="form-group" style="flex:0.8">
+              <label class="form-label">N. civico</label>
+              <input type="text" name="osp2_civico" class="form-control"
+                value="{{ dati_form.get('osp2_civico','') }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Riferimenti</label>
+            <input type="text" name="osp2_riferimenti" class="form-control"
+              value="{{ dati_form.get('osp2_riferimenti','') }}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Data inizio fase 2</label>
+              <input type="date" name="osp2_data_inizio" class="form-control"
+                value="{{ dati_form.get('osp2_data_inizio','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Data fine fase 2</label>
+              <input type="date" name="osp2_data_fine" class="form-control"
+                value="{{ dati_form.get('osp2_data_fine','') }}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Ora inizio</label>
+              <input type="time" name="osp2_ora_inizio" class="form-control"
+                value="{{ dati_form.get('osp2_ora_inizio','07:00') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ora fine</label>
+              <input type="time" name="osp2_ora_fine" class="form-control"
+                value="{{ dati_form.get('osp2_ora_fine','19:00') }}">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Superficie (mq)</label>
+              <input type="number" name="osp2_superficie_mq" class="form-control"
+                min="0.5" step="0.5"
+                value="{{ dati_form.get('osp2_superficie_mq','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Larghezza (mt)</label>
+              <input type="number" name="osp2_metri_x" class="form-control" min="0.1" step="0.1"
+                value="{{ dati_form.get('osp2_metri_x','') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lunghezza (mt)</label>
+              <input type="number" name="osp2_metri_y" class="form-control" min="0.1" step="0.1"
+                value="{{ dati_form.get('osp2_metri_y','') }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo superficie fase 2</label>
+            <select name="osp2_tipo_superficie" class="form-control">
+              {% set ts2 = dati_form.get('osp2_tipo_superficie','MARCIAPIEDE') %}
+              <option value="MARCIAPIEDE" {% if ts2=='MARCIAPIEDE' %}selected{% end %}>Marciapiede</option>
+              <option value="CARREGGIATA" {% if ts2=='CARREGGIATA' %}selected{% end %}>Carreggiata</option>
+              <option value="STALLI" {% if ts2=='STALLI' %}selected{% end %}>Stalli di sosta</option>
+              <option value="AREA_VERDE" {% if ts2=='AREA_VERDE' %}selected{% end %}>Area verde / Sterrato</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Oggetto fase 2 (max 40 caratteri)</label>
+            <input type="text" name="osp2_scopo" class="form-control" maxlength="40"
+              value="{{ dati_form.get('osp2_scopo','') }}">
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:4px">
+            <input type="checkbox" name="osp2_ha_mezzi_speciali" value="1"
+              {% if dati_form.get('osp2_ha_mezzi_speciali') %}checked{% end %}>
+            <span>Prevede utilizzo di mezzi speciali</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 6 — ALLEGATI
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-5">
+    <div class="card-header"><h3>📎 Allegati</h3></div>
+    <div class="card-body">
+
+      <div class="alert alert-info" style="margin-bottom:16px">
+        <strong>ℹ️ Documenti da allegare alla domanda:</strong>
+        <ul style="margin:8px 0 0 16px;font-size:13px">
+          <li>Planimetria o schizzo quotato dell'area da occupare</li>
+          <li>Copia documento d'identità richiedente (fronte-retro)</li>
+          <li>Eventuale documentazione tecnica del cantiere / lavori</li>
+          <li>Per mezzi speciali: dati tecnici del mezzo (portata, ingombro)</li>
+        </ul>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Planimetria / Schizzo quotato <span class="req">*</span></label>
+        <input type="file" name="allegato_planimetria" class="form-control"
+          accept=".pdf,.jpg,.jpeg,.png,.dwg">
+        <div style="font-size:11px;color:#6B7280;margin-top:3px">PDF, JPG o PNG — max 10MB</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Documento d'identità richiedente <span class="req">*</span></label>
+        <input type="file" name="allegato_documento" class="form-control"
+          accept=".pdf,.jpg,.jpeg,.png">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Documentazione aggiuntiva</label>
+        <input type="file" name="allegato_extra" class="form-control" multiple
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note / Motivazione aggiuntiva</label>
+        <textarea name="descrizione" class="form-control" rows="3"
+          placeholder="Eventuali note o informazioni aggiuntive per l'ufficio...">{{ dati_form.get('descrizione','') }}</textarea>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="button" class="btn btn-primary" onclick="nextStep()">Avanti →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STEP 7 — RIEPILOGO E INVIO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="form-section card" id="step-6">
+    <div class="card-header"><h3>✅ Riepilogo e Conferma</h3></div>
+    <div class="card-body">
+
+      <div id="riepilogo-box" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:16px;margin-bottom:16px;font-size:13px;line-height:1.8">
+        <em style="color:#6B7280">Il riepilogo sarà popolato automaticamente...</em>
+      </div>
+
+      <!-- Calcolo COSAP in tempo reale -->
+      <div class="cosap-preview" style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:700;color:#1E40AF;margin-bottom:10px">💶 Calcolo COSAP stimato</div>
+        <div style="font-size:12px;color:#374151;margin-bottom:8px" id="cosap-formula-txt">
+          Completare i campi precedenti per vedere il calcolo...
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:#6B7280">Canone COSAP</div>
+            <div style="font-size:22px;font-weight:800;color:#1E40AF" id="cosap-amount">€ —</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#6B7280">Bollo digitale</div>
+            <div style="font-size:16px;font-weight:600;color:#374151">€ 16,00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#6B7280">TOTALE DA PAGARE</div>
+            <div style="font-size:26px;font-weight:900;color:#059669" id="cosap-totale">€ —</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#6B7280;margin-top:8px">
+          * Importo stimato — il calcolo definitivo sarà determinato dall'ufficio competente
+        </div>
+      </div>
+
+      <!-- Dichiarazioni -->
+      <div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-weight:700;color:#92400E;margin-bottom:10px">📋 Dichiarazioni del richiedente</div>
+        <label style="display:flex;gap:10px;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" name="dichiarazioni_ok" value="1" required id="cb-dichiarazioni">
+          <span style="font-size:13px">
+            Il sottoscritto, consapevole delle responsabilità penali previste dall'art. 76 D.P.R. 445/2000,
+            <strong>dichiara</strong> che le informazioni fornite sono veritiere e si impegna a rispettare
+            le condizioni previste dalla normativa comunale vigente.
+          </span>
+        </label>
+        <label style="display:flex;gap:10px;cursor:pointer">
+          <input type="checkbox" name="prescrizioni_accettate" value="1" required id="cb-prescrizioni">
+          <span style="font-size:13px">
+            <strong>Accetta</strong> le prescrizioni standard OSP del Comune di Milano (segnaletica,
+            ripristino, ecc.) e prende atto che la concessione è subordinata al pagamento del canone COSAP.
+          </span>
+        </label>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn btn-secondary" onclick="prevStep()">← Indietro</button>
+        <button type="submit" class="btn btn-success" id="btn-invia"
+          style="font-size:15px;padding:12px 28px">
+          📤 Invia Domanda
+        </button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- flex 1 -->
+
+  <!-- SIDEBAR COSAP -->
+  <div style="width:280px;flex-shrink:0;position:sticky;top:20px">
+    <div class="cosap-preview card">
+      <div class="card-body">
+        <div style="font-weight:700;color:#1E40AF;margin-bottom:12px;font-size:14px">💶 COSAP stimato</div>
+        <div style="font-size:12px;color:#6B7280;min-height:60px" id="cosap-sidebar-detail">
+          Inserisci superficie, microzona e tipo per vedere il calcolo
+        </div>
+        <div style="border-top:1px solid #BFDBFE;margin:12px 0"></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#374151;margin-bottom:4px">
+          <span>COSAP</span><span id="sb-cosap">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:#374151;margin-bottom:6px">
+          <span>Bollo</span><span>€ 16,00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#059669">
+          <span>Totale</span><span id="sb-totale">—</span>
+        </div>
+        <div style="font-size:10px;color:#9CA3AF;margin-top:6px">Calcolo indicativo</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-body" style="font-size:12px;color:#374151">
+        <div style="font-weight:700;margin-bottom:8px;color:#374151">📞 Informazioni</div>
+        <div style="margin-bottom:4px">Ufficio OSP: <strong>02 88 44 OSP</strong></div>
+        <div style="margin-bottom:4px">Email: <strong>osp@comune.milano.it</strong></div>
+        <div style="margin-bottom:8px">Orari: Lun–Ven 8:30–12:00</div>
+        <div style="border-top:1px solid #E5E7EB;padding-top:8px;color:#6B7280">
+          Max 14 giorni consecutivi.<br>
+          La concessione è emessa dopo pagamento.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- flex container -->
+  </form>
+</div>
+
+<script>
+// ─── Stato dello stepper ───
+let currentStep = 0;
+const totalSteps = 7;
+
+function goToStep(n) {
+  document.querySelectorAll('.form-section').forEach((s, i) => {
+    s.classList.toggle('active', i === n);
+  });
+  document.querySelectorAll('.step').forEach((s, i) => {
+    s.classList.remove('active', 'done');
+    if (i < n) s.classList.add('done');
+    else if (i === n) s.classList.add('active');
+  });
+  document.getElementById('progress-bar').style.width = ((n + 1) / totalSteps * 100) + '%';
+  if (n === totalSteps - 1) buildRiepilogo();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  currentStep = n;
+}
+
+function nextStep() {
+  if (currentStep < totalSteps - 1) goToStep(currentStep + 1);
+}
+function prevStep() {
+  if (currentStep > 0) goToStep(currentStep - 1);
+}
+
+// ─── Tipo soggetto ───
+function toggleTipoSoggetto(tipo) {
+  document.getElementById('section-pf').style.display = tipo === 'PERSONA_FISICA' ? 'block' : 'none';
+  document.getElementById('section-pg').style.display = tipo === 'PERSONA_GIURIDICA' ? 'block' : 'none';
+}
+// Inizializzazione
+(function() {
+  const sel = document.querySelector('input[name="tipo_soggetto"]:checked');
+  if (sel) toggleTipoSoggetto(sel.value);
+})();
+
+// ─── Stalli eccedenti ───
+function toggleEccedente() {
+  const show = document.getElementById('cb-eccedente').checked;
+  document.getElementById('eccedente-dove').style.display = show ? 'block' : 'none';
+}
+
+// ─── Mezzi speciali ───
+function toggleMezziSpeciali() {
+  const show = document.getElementById('cb-mezzi').checked;
+  document.getElementById('mezzi-speciali-section').style.display = show ? 'block' : 'none';
+}
+function toggleMezzoAltro() {
+  const show = document.getElementById('cb-mezzo-altro').checked;
+  document.getElementById('mezzo-altro-desc').style.display = show ? 'block' : 'none';
+}
+
+// ─── Accesso ZTL ───
+function toggleAccesso() {
+  const show = document.getElementById('cb-accesso').checked;
+  document.getElementById('accesso-section').style.display = show ? 'block' : 'none';
+}
+function toggleAccessoAltro() {
+  const show = document.getElementById('cb-accesso-altro').checked;
+  document.getElementById('accesso-altro-desc').style.display = show ? 'block' : 'none';
+}
+
+// ─── Fase 2 ───
+function toggleFase2() {
+  const show = document.getElementById('cb-fase2').checked;
+  document.getElementById('fase2-section').style.display = show ? 'block' : 'none';
+}
+
+// ─── Tipo superficie (nascosta) ───
+document.querySelectorAll('[name^="tipo_sup_"]').forEach(cb => {
+  cb.addEventListener('change', function() {
+    const mapping = {
+      'tipo_sup_marciapiede': 'MARCIAPIEDE',
+      'tipo_sup_carreggiata': 'CARREGGIATA',
+      'tipo_sup_stalli': 'STALLI',
+      'tipo_sup_verde': 'AREA_VERDE',
+    };
+    const checked = [...document.querySelectorAll('[name^="tipo_sup_"]:checked')]
+      .map(c => mapping[c.name]);
+    document.getElementById('tipo_superficie_hidden').value = checked[0] || 'MARCIAPIEDE';
+  });
+});
+
+// ─── Calcolo durata ───
+function updateDurata() {
+  const d1 = document.getElementById('data_inizio').value;
+  const d2 = document.getElementById('data_fine').value;
+  if (!d1 || !d2) { document.getElementById('durata_display').value = '—'; return; }
+  const days = Math.round((new Date(d2) - new Date(d1)) / 86400000) + 1;
+  const el = document.getElementById('durata_display');
+  if (days < 1) { el.value = '⚠️ Date non valide'; return; }
+  if (days > 14) {
+    el.value = '⚠️ Supera i 14 giorni!';
+    el.style.color = '#DC2626';
+  } else {
+    el.value = days + (days === 1 ? ' giorno' : ' giorni');
+    el.style.color = '#003F8A';
+  }
+  updateCosapPreview();
+}
+
+// ─── Calcolo dimensioni ───
+function calcSuperficieDaMetri() {
+  const x = parseFloat(document.getElementById('metri_x').value);
+  const y = parseFloat(document.getElementById('metri_y').value);
+  if (x > 0 && y > 0) {
+    document.getElementById('superficie_mq').value = (x * y).toFixed(1);
+    updateCosapPreview();
+  }
+}
+function syncDimensioni() { updateCosapPreview(); }
+
+// ─── Contatore caratteri ───
+function updateCharCount() {
+  const len = document.getElementById('scopo').value.length;
+  document.getElementById('char-count').textContent = len;
+}
+
+// ─── Rilevazione zona da CAP ───
+function rilevaCAPZona(cap) {
+  if (cap.length === 5) {
+    fetch('/api/zona-da-cap?cap=' + cap)
+      .then(r => r.json())
+      .then(d => {
+        if (d.zona) {
+          document.getElementById('zona_display').value = 'Zona ' + d.zona + ' — ' + (d.nome || '');
+          // Filtra microzone per zona
+          filterMicrozone(d.zona);
+        }
+      }).catch(() => {});
+  }
+}
+
+function filterMicrozone(zona) {
+  const sel = document.getElementById('microzona_id');
+  [...sel.options].forEach(opt => {
+    if (!opt.value) return; // keep placeholder
+    opt.style.display = (opt.dataset.zona == zona || !zona) ? '' : 'none';
+  });
+}
+
+// ─── Calcolo COSAP ───
+function updateCosapPreview() {
+  const sup = parseFloat(document.getElementById('superficie_mq').value) || 0;
+  const d1 = document.getElementById('data_inizio').value;
+  const d2 = document.getElementById('data_fine').value;
+  const mzSel = document.getElementById('microzona_id');
+  const tipoSel = document.getElementById('tipo_occupazione');
+
+  if (!sup || !d1 || !d2 || !mzSel.value || !tipoSel.value) {
+    ['cosap-amount','cosap-totale','sb-cosap','sb-totale'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '—';
+    });
+    return;
+  }
+
+  const days = Math.round((new Date(d2) - new Date(d1)) / 86400000) + 1;
+  if (days < 1 || days > 14) return;
+
+  const params = new URLSearchParams({
+    superficie_mq: sup,
+    data_inizio: d1,
+    data_fine: d2,
+    microzona_id: mzSel.value,
+    tipo_occupazione: tipoSel.value,
+  });
+
+  fetch('/api/cosap/calcola?' + params)
+    .then(r => r.json())
+    .then(d => {
+      if (d.cosap != null) {
+        document.getElementById('cosap-amount').textContent = '€ ' + d.cosap.toFixed(2);
+        document.getElementById('cosap-totale').textContent = '€ ' + d.totale.toFixed(2);
+        document.getElementById('sb-cosap').textContent = '€ ' + d.cosap.toFixed(2);
+        document.getElementById('sb-totale').textContent = '€ ' + d.totale.toFixed(2);
+        const coeff = mzSel.options[mzSel.selectedIndex]?.dataset?.coeff || '—';
+        document.getElementById('cosap-formula-txt').textContent =
+          sup + ' mq × ' + days + ' gg × €' + (d.tariffa_base||'?') + '/mq/gg × coeff.microzona ' +
+          parseFloat(coeff).toFixed(3) + ' × coeff.tipo ' + (d.coefficiente_tipo||'?');
+        document.getElementById('cosap-sidebar-detail').textContent =
+          sup + ' mq — ' + days + ' giorni — coeff. ' + parseFloat(coeff).toFixed(3);
+      }
+    }).catch(() => {});
+}
+
+// ─── Riepilogo finale ───
+function buildRiepilogo() {
+  const fields = {
+    'Via occupazione': document.querySelector('[name="via"]')?.value,
+    'Civico': document.querySelector('[name="civico"]')?.value,
+    'Tipo': document.querySelector('[name="tipo_occupazione"]')?.selectedOptions[0]?.text,
+    'Superficie': (document.getElementById('superficie_mq')?.value || '—') + ' mq',
+    'Periodo': (document.getElementById('data_inizio')?.value || '—') + ' → ' +
+               (document.getElementById('data_fine')?.value || '—'),
+    'Orario': (document.querySelector('[name="ora_inizio"]')?.value || '—') + ' → ' +
+              (document.querySelector('[name="ora_fine"]')?.value || '—'),
+    'Microzona': document.getElementById('microzona_id')?.selectedOptions[0]?.text?.substring(0,40),
+    'Oggetto': document.getElementById('scopo')?.value,
+  };
+  let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  for (const [label, val] of Object.entries(fields)) {
+    if (!val) continue;
+    html += `<tr><td style="padding:5px 8px;color:#6B7280;width:40%;border-bottom:1px solid #F3F4F6">${label}</td>` +
+            `<td style="padding:5px 8px;font-weight:500;border-bottom:1px solid #F3F4F6">${val}</td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('riepilogo-box').innerHTML = html;
+  updateCosapPreview();
+}
+
+// ─── Inizializzazione ───
+updateCharCount();
+updateDurata();
+</script>
+{% end %}
