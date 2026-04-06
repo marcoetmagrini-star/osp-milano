@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: osp-milano
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: python database.py && python seed.py
+    startCommand: python app.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: OSP_DEBUG
+        value: false
+    disk:
+      name: osp-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
